@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../Database/Firebase';
 import { FiSearch, FiFilter } from 'react-icons/fi';
-import { MdCategory, MdOutlineLocalOffer, MdRemoveRedEye } from 'react-icons/md';
+import { MdCategory, MdRemoveRedEye } from 'react-icons/md';
 import { GiGoldBar } from 'react-icons/gi';
 import { BsWhatsapp } from 'react-icons/bs';
 import Slider from 'react-slick';
@@ -39,10 +39,8 @@ const Home = () => {
   ];
 
   useEffect(() => {
-    // Check if user has already registered
     const hasRegistered = localStorage.getItem('hasRegistered');
 
-    // If not registered, show the form after a small delay
     if (!hasRegistered) {
       const timer = setTimeout(() => {
         setShowUserForm(true);
@@ -50,7 +48,6 @@ const Home = () => {
       return () => clearTimeout(timer);
     }
 
-    // Fetch products
     const productsRef = ref(database, 'products');
     onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
@@ -68,7 +65,6 @@ const Home = () => {
       setLoading(false);
     });
 
-    // Fetch gold rates
     const goldRateRef = ref(database, 'goldRate');
     onValue(goldRateRef, (snapshot) => {
       const rates = snapshot.val();
@@ -78,12 +74,9 @@ const Home = () => {
           '22': parseFloat(rates['22'] || 0),
           '24': parseFloat(rates['24'] || 0)
         });
-      } else {
-        setGoldRates({ '18': 0, '22': 0, '24': 0 });
       }
     });
 
-    // Fetch GST rate
     const gstRateRef = ref(database, 'gstRate');
     onValue(gstRateRef, (snapshot) => {
       setGstRate(parseFloat(snapshot.val()) || 3);
@@ -93,7 +86,6 @@ const Home = () => {
   useEffect(() => {
     let results = products;
 
-    // Apply search filter
     if (searchTerm) {
       results = results.filter(product =>
         product.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -101,7 +93,6 @@ const Home = () => {
       );
     }
 
-    // Apply category filter
     if (filterCategory !== 'all') {
       results = results.filter(product => product.category === filterCategory);
     }
@@ -144,7 +135,6 @@ const Home = () => {
     setShowUserForm(false);
   };
 
-  // Slider settings
   const sliderSettings = {
     dots: true,
     infinite: true,
@@ -162,13 +152,11 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-stone-50 font-lora">
-      {/* Add font family to your global CSS or in a style tag */}
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
       `}</style>
 
-      {/* User Registration Modal */}
-      {showUserForm && <UserFormModal onClose={handleCloseUserForm} />}
+      {showUserForm && <UserFormModal isOpen={showUserForm} onClose={handleCloseUserForm} />}
 
       {/* Gold Rate Banner */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 py-3 shadow-sm sticky top-0 z-10">
@@ -377,8 +365,6 @@ const Home = () => {
           </div>
         )}
       </main>
-
-     
     </div>
   );
 };
