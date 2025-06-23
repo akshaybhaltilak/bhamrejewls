@@ -36,7 +36,7 @@ const App = () => {
       <Header />
       <Routes>
         <Route path="/admin" element={<AdminPanel />} />
-        <Route path="/" element={<Home />} />
+        <Route path="/home" element={<Home />} />
         <Route path="/product/:id" element={<ProductPage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
