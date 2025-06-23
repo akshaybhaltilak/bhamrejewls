@@ -19,7 +19,7 @@ const App = () => {
   }, []);
 
   // If form is not submitted, show only the form modal (except for admin route)
-  if (!formSubmitted && !window.location.pathname.startsWith('/admin')) {
+  if (!formSubmitted && !window.location.pathname.startsWith('/home')) {
     return <UserFormModal onSuccess={() => setFormSubmitted(true)} />;
   }
 
