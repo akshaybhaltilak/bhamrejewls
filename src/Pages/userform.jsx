@@ -78,7 +78,7 @@ const UserFormModal = () => {
           <div className="text-center mb-6">
             <div className="flex justify-center mb-4">
               <div className="bg-yellow-500 p-4 rounded-full">
-                <GiGoldBar className="text-white text-3xl" />
+              <img src="logogold.png" alt="logo" className='h-10 w-10'/>
               </div>
             </div>
             <h1 className="text-3xl font-bold text-gray-800 mb-2">Bhamare Jewellers</h1>
