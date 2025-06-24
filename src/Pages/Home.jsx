@@ -32,24 +32,21 @@ const Home = () => {
   const banners = [
     'https://images.unsplash.com/photo-1605100804763-247f67b3557e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
     'https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80',
-    'https://images.pexels.com/photos/922567/pexels-photo-922567.jpeg',
-    'https://images.pexels.com/photos/15791713/pexels-photo-15791713.jpeg',
-    'https://images.pexels.com/photos/9582095/pexels-photo-9582095.jpeg'
+    'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1200&q=80'
   ];
 
   useEffect(() => {
-    const hasRegistered = localStorage.getItem('hasRegistered');
-
-    if (!hasRegistered) {
+    const hasSubmitted = localStorage.getItem('formSubmitted');
+    if (!hasSubmitted) {
       const timer = setTimeout(() => {
         setShowUserForm(true);
       }, 1000);
       return () => clearTimeout(timer);
     }
 
+    // Fetch products
     const productsRef = ref(database, 'products');
-    onValue(productsRef, (snapshot) => {
+    const unsubscribeProducts = onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const productsArray = Object.keys(data).map(key => ({
@@ -58,15 +55,13 @@ const Home = () => {
         }));
         setProducts(productsArray);
         setFilteredProducts(productsArray);
-      } else {
-        setProducts([]);
-        setFilteredProducts([]);
       }
       setLoading(false);
     });
 
+    // Fetch gold rates
     const goldRateRef = ref(database, 'goldRate');
-    onValue(goldRateRef, (snapshot) => {
+    const unsubscribeGoldRates = onValue(goldRateRef, (snapshot) => {
       const rates = snapshot.val();
       if (rates) {
         setGoldRates({
@@ -77,26 +72,30 @@ const Home = () => {
       }
     });
 
+    // Fetch GST rate
     const gstRateRef = ref(database, 'gstRate');
-    onValue(gstRateRef, (snapshot) => {
+    const unsubscribeGstRate = onValue(gstRateRef, (snapshot) => {
       setGstRate(parseFloat(snapshot.val()) || 3);
     });
+
+    return () => {
+      unsubscribeProducts();
+      unsubscribeGoldRates();
+      unsubscribeGstRate();
+    };
   }, []);
 
   useEffect(() => {
     let results = products;
-
     if (searchTerm) {
       results = results.filter(product =>
-        product.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.barcodeNo.toLowerCase().includes(searchTerm.toLowerCase())
+        product.itemName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.barcodeNo?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
-
     if (filterCategory !== 'all') {
       results = results.filter(product => product.category === filterCategory);
     }
-
     setFilteredProducts(results);
   }, [searchTerm, filterCategory, products]);
 
@@ -107,32 +106,19 @@ const Home = () => {
 
     const goldValue = parseFloat(product.netWeight) * goldRate;
     const makingChargesValue = goldValue * (parseFloat(product.makingChargesPercentage || 0) / 100);
-
-    const subtotal = (
-      goldValue +
-      makingChargesValue +
-      parseFloat(product.hallmarkCharges || 0) +
-      parseFloat(product.stoneCharges || 0)
-    );
-
+    const subtotal = goldValue + makingChargesValue + parseFloat(product.hallmarkCharges || 0) + parseFloat(product.stoneCharges || 0);
     const gstAmount = subtotal * (parseFloat(product.gstRate || gstRate) / 100);
     return (subtotal + gstAmount).toFixed(2);
   };
 
   const handleWhatsAppInquiry = (product) => {
     const price = calculatePrice(product);
-    const message = `Hello Bhamare Jewellers,\n\nI'm interested in this product:\n\n*Product Name:* ${product.itemName}\n*Barcode:* ${product.barcodeNo}\n*Category:* ${product.category}\n*Carat:* ${product.carat}K\n*Net Weight:* ${product.netWeight}g\n*Gross Weight:* ${product.grossWeight}g\n*Making Charges:* ${product.makingChargesPercentage}%\n*Estimated Price:* ₹${price}\n\nPlease provide more details about this item.`;
-    const encodedMessage = encodeURIComponent(message);
-    window.open(`https://wa.me/918668722207?text=${encodedMessage}`, '_blank');
+    const message = `Hello Bhamare Jewellers,\n\nI'm interested in:\n*${product.itemName}*\nBarcode: ${product.barcodeNo}\nCategory: ${product.category}\nCarat: ${product.carat}K\nWeight: ${product.netWeight}g\nPrice: ₹${price}`;
+    window.open(`https://wa.me/918668722207?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const viewProductDetails = (productId) => {
     navigate(`/product/${productId}`);
-  };
-
-  const handleCloseUserForm = () => {
-    localStorage.setItem('hasRegistered', 'true');
-    setShowUserForm(false);
   };
 
   const sliderSettings = {
@@ -145,9 +131,7 @@ const Home = () => {
     autoplaySpeed: 3000,
     arrows: false,
     fade: true,
-    cssEase: 'cubic-bezier(0.645, 0.045, 0.355, 1)',
-    pauseOnHover: false,
-    pauseOnFocus: false,
+    cssEase: 'cubic-bezier(0.645, 0.045, 0.355, 1)'
   };
 
   return (
@@ -156,30 +140,20 @@ const Home = () => {
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
       `}</style>
 
-      {showUserForm && <UserFormModal isOpen={showUserForm} onClose={handleCloseUserForm} />}
+      {showUserForm && <UserFormModal />}
 
       {/* Gold Rate Banner */}
       <div className="bg-gradient-to-r from-purple-900 to-indigo-900 py-3 shadow-sm sticky top-0 z-10">
         <div className="container mx-auto px-4">
           <div className="flex flex-wrap items-center justify-center gap-6">
-            <div className="flex items-center bg-black bg-opacity-20 px-4 py-2 rounded-full">
-              <GiGoldBar className="text-yellow-400 text-xl mr-2" />
-              <span className="font-semibold text-white tracking-wide">
-                24K: ₹{goldRates['24'] ? goldRates['24'].toLocaleString('en-IN') : '--'}
-              </span>
-            </div>
-            <div className="flex items-center bg-black bg-opacity-20 px-4 py-2 rounded-full">
-              <GiGoldBar className="text-yellow-400 text-xl mr-2" />
-              <span className="font-semibold text-white tracking-wide">
-                22K: ₹{goldRates['22'] ? goldRates['22'].toLocaleString('en-IN') : '--'}
-              </span>
-            </div>
-            <div className="flex items-center bg-black bg-opacity-20 px-4 py-2 rounded-full">
-              <GiGoldBar className="text-yellow-400 text-xl mr-2" />
-              <span className="font-semibold text-white tracking-wide">
-                18K: ₹{goldRates['18'] ? goldRates['18'].toLocaleString('en-IN') : '--'}
-              </span>
-            </div>
+            {['24', '22', '18'].map(carat => (
+              <div key={carat} className="flex items-center bg-black bg-opacity-20 px-4 py-2 rounded-full">
+                <GiGoldBar className="text-yellow-400 text-xl mr-2" />
+                <span className="font-semibold text-white tracking-wide">
+                  {carat}K: ₹{goldRates[carat]?.toLocaleString('en-IN') || '--'}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -193,6 +167,7 @@ const Home = () => {
                 src={banner}
                 alt={`Banner ${index + 1}`}
                 className="w-full h-64 md:h-[500px] object-cover object-center"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-stone-900/90 to-transparent"></div>
               <div className="absolute bottom-10 left-0 right-0 text-center px-4">
@@ -242,11 +217,6 @@ const Home = () => {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                    <svg className="h-5 w-5 text-stone-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </div>
                 </div>
               </div>
             </div>
@@ -260,10 +230,11 @@ const Home = () => {
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
-                className={`px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 ${filterCategory === cat
-                  ? 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md'
-                  : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200 hover:border-purple-300'
-                  }`}
+                className={`px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 ${
+                  filterCategory === cat
+                    ? 'bg-gradient-to-r from-purple-700 to-indigo-700 text-white shadow-md'
+                    : 'bg-white text-stone-700 hover:bg-stone-100 border border-stone-200 hover:border-purple-300'
+                }`}
               >
                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
               </button>
@@ -295,29 +266,22 @@ const Home = () => {
                       src={product.imageUrl}
                       alt={product.itemName}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-stone-900/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
-                      <span className="text-white font-medium font-lora">{product.itemName}</span>
-                    </div>
                   </div>
                 )}
                 <div className="p-5">
                   <div className="flex justify-between items-start">
                     <h3 className="text-lg font-semibold text-stone-800 truncate font-lora">{product.itemName}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${product.carat === '24' ? 'bg-yellow-100 text-yellow-800' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      product.carat === '24' ? 'bg-yellow-100 text-yellow-800' :
                       product.carat === '22' ? 'bg-amber-100 text-amber-800' :
-                        'bg-stone-100 text-stone-800'
-                      }`}>
+                      'bg-stone-100 text-stone-800'
+                    }`}>
                       {product.carat}K
                     </span>
                   </div>
-                  <p className="text-sm text-stone-500 mt-1 font-lora">#{product.barcodeNo}</p>
-
-                  <div className="mt-3 flex items-center text-stone-600">
-                    <MdCategory className="text-purple-500 mr-2" />
-                    <span className="text-sm capitalize font-lora">{product.category}</span>
-                  </div>
-
+                  
                   <div className="mt-4 grid grid-cols-2 gap-3">
                     <div className="bg-stone-50 p-3 rounded-lg border border-stone-100">
                       <p className="text-xs text-stone-500 font-lora">Net Weight</p>

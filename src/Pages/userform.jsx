@@ -1,126 +1,170 @@
-import React, { useState } from 'react';
-import { FiUser, FiPhone, FiMail, FiX } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ref, push } from 'firebase/database';
+import { database } from '../Database/Firebase';
+import { FiUser, FiPhone, FiCheck, FiLoader } from 'react-icons/fi';
+import { GiGoldBar } from 'react-icons/gi';
 
-const UserFormModal = ({ isOpen, onClose }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    email: '',
-  });
+const UserFormModal = () => {
+  const navigate = useNavigate();
+  const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  // Check if user has already submitted the form
+  useEffect(() => {
+    const hasSubmitted = localStorage.getItem('formSubmitted');
+    if (hasSubmitted) {
+      navigate('/', { replace: true }); // Redirect to home if already submitted
+    }
+  }, [navigate]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Save form data to localStorage
-    localStorage.setItem('userData', JSON.stringify(formData));
-    onClose();
-  };
+    setLoading(true);
+    setError('');
 
-  if (!isOpen) return null;
+    // Basic validation
+    if (!name.trim() || !phoneNumber.trim()) {
+      setError('Please fill in all fields');
+      setLoading(false);
+      return;
+    }
+
+    // Phone number validation (basic)
+    if (phoneNumber.length < 10) {
+      setError('Please enter a valid phone number (at least 10 digits)');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userData = {
+        name: name.trim(),
+        phoneNumber: phoneNumber.trim(),
+        createdAt: new Date().toISOString(),
+        timestamp: Date.now()
+      };
+
+      await push(ref(database, 'users'), userData);
+      
+      setSuccess(true);
+      setName('');
+      setPhoneNumber('');
+      
+      // Store in local storage that user has submitted the form
+      localStorage.setItem('formSubmitted', 'true');
+      
+      // Redirect to home after showing success message for 2 seconds
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 2000);
+
+    } catch (error) {
+      console.error("Error saving user data:", error);
+      setError('Failed to save user data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-fade-in">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-semibold text-purple-900">Welcome to Bhamare Jewellers</h2>
-          <button 
-            onClick={onClose}
-            className="text-stone-500 hover:text-stone-700"
-          >
-            <FiX className="w-6 h-6" />
-          </button>
-        </div>
-
-        <p className="text-stone-600 mb-6">
-          Please provide your details to continue browsing our collection. We'll use this information to serve you better.
-        </p>
-
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="name" className="block text-sm font-medium text-stone-700 mb-1">
-              Full Name
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiUser className="text-stone-400" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md relative">
+        <div className="p-6">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="flex justify-center mb-4">
+              <div className="bg-yellow-500 p-4 rounded-full">
+                <GiGoldBar className="text-white text-3xl" />
               </div>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="block w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="Enter your full name"
-              />
             </div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">Bhamare Jewellers</h1>
+            <p className="text-gray-600">Register to explore our exquisite jewelry collection</p>
           </div>
 
-          <div className="mb-4">
-            <label htmlFor="phone" className="block text-sm font-medium text-stone-700 mb-1">
-              Phone Number
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiPhone className="text-stone-400" />
-              </div>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                required
-                className="block w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="Enter your phone number"
-              />
+          {/* Success Message */}
+          {success && (
+            <div className="mb-4 p-4 bg-green-100 border border-green-300 rounded-lg flex items-center">
+              <FiCheck className="text-green-600 mr-2" />
+              <span className="text-green-700">Registration successful! Redirecting to homepage...</span>
             </div>
-          </div>
+          )}
 
-          <div className="mb-6">
-            <label htmlFor="email" className="block text-sm font-medium text-stone-700 mb-1">
-              Email Address (Optional)
-            </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FiMail className="text-stone-400" />
-              </div>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="block w-full pl-10 pr-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="Enter your email address"
-              />
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+              <span className="text-red-700">{error}</span>
             </div>
-          </div>
+          )}
 
-          <div className="flex justify-end space-x-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 border border-stone-300 rounded-lg text-stone-700 hover:bg-stone-100 transition-colors"
-            >
-              Skip
-            </button>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Name Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiUser className="text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="Enter your full name"
+                  required
+                  disabled={loading || success}
+                />
+              </div>
+            </div>
+
+            {/* Phone Number Field */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number *
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FiPhone className="text-gray-400" />
+                </div>
+                <input
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  placeholder="Enter your phone number"
+                  required
+                  disabled={loading || success}
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
-              className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg text-white hover:from-purple-700 hover:to-indigo-700 transition-colors shadow-md"
+              disabled={loading || success}
+              className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-300 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center"
             >
-              Submit
+              {loading ? (
+                <>
+                  <FiLoader className="animate-spin mr-2" />
+                  Registering...
+                </>
+              ) : (
+                success ? 'Success!' : 'Register Now'
+              )}
             </button>
+          </form>
+
+          {/* Footer */}
+          <div className="mt-4 text-center text-sm text-gray-500">
+            <p>By registering, you agree to receive updates about our latest jewelry collections and offers.</p>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );
