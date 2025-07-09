@@ -1,32 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 
-import AdminPanel from './Pages/AdminPanel';
-import Home from './Pages/Home';
-import ProductPage from './Pages/ProductPage';
-import Header from './Components/Header';
-import Footer from './Components/Footer';
-import UserFormModal from './Pages/userform';
+import AdminPanel from "./Pages/AdminPanel";
+import Home from "./Pages/Home";
+import ProductPage from "./Pages/ProductPage";
+import Header from "./Components/Header";
+import Footer from "./Components/Footer";
+import UserFormModal from "./Pages/userform"; // ✅ Make sure file is named UserForm.jsx
+import ImageUploadPage from "./Pages/ImageUploadPage"; // ✅ Your Cloudinary page
 
+// Inner App logic
 const App = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
-    const hasSubmitted = localStorage.getItem('formSubmitted');
-    if (hasSubmitted === 'true') {
+    const hasSubmitted = localStorage.getItem("formSubmitted");
+    if (hasSubmitted === "true") {
       setFormSubmitted(true);
     }
   }, []);
 
-  // Skip form for admin routes
-  if (!formSubmitted && !location.pathname.startsWith('/admin')) {
+  // Show form modal if not submitted and not on admin route
+  if (!formSubmitted && !location.pathname.startsWith("/admin")) {
     return (
-      <UserFormModal 
+      <UserFormModal
         onSuccess={() => {
-          localStorage.setItem('formSubmitted', 'true');
+          localStorage.setItem("formSubmitted", "true");
           setFormSubmitted(true);
-        }} 
+        }}
       />
     );
   }
@@ -37,15 +45,16 @@ const App = () => {
       <Routes>
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/" element={<Home />} />
+        <Route path="/image-upload" element={<ImageUploadPage />} />
         <Route path="/product/:id" element={<ProductPage />} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Footer />
     </>
   );
 };
 
-// Wrap App with Router
+// App wrapped in Router
 export default function WrappedApp() {
   return (
     <Router>

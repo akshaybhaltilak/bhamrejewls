@@ -3,6 +3,8 @@ import { ref, set, onValue, remove, update, push } from 'firebase/database';
 import { database } from '../Database/Firebase';
 import { FiEdit, FiTrash2, FiSearch, FiFilter, FiDollarSign, FiLink, FiUpload, FiUsers, FiPhone } from 'react-icons/fi';
 import { GiStonePath, GiGoldBar } from 'react-icons/gi';
+import { Link } from 'react-router-dom';
+
 
 const AdminPanel = () => {
   const [products, setProducts] = useState([]);
@@ -360,6 +362,12 @@ const AdminPanel = () => {
                 <FiDollarSign className="mr-2" />
                 Save Gold Rates
               </button>
+              <Link 
+              to="/image-upload" 
+              className="hover:text-yellow-300 transition font-medium text-lg px-3 py-2 rounded hover:bg-gray-800"
+            >
+              Image Upload
+            </Link>
             </div>
           </div>
         </div>
