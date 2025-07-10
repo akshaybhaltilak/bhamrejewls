@@ -5,6 +5,10 @@ import { FiEdit, FiTrash2, FiSearch, FiFilter, FiDollarSign, FiLink, FiUpload, F
 import { GiStonePath, GiGoldBar } from 'react-icons/gi';
 import { Link } from 'react-router-dom';
 
+// Cloudinary configuration
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "dvx3a4adj";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UNSIGNED_PRESET || "gold_preset";
+const CLOUD_FOLDER = "gold-catalog";
 
 const AdminPanel = () => {
   const [products, setProducts] = useState([]);
@@ -29,11 +33,12 @@ const AdminPanel = () => {
   const [carat, setCarat] = useState('22');
   const [category, setCategory] = useState('ring');
   const [imageUrl, setImageUrl] = useState('');
-  const [goldRate, setGoldRate] = useState({ '18': '', '22': '' });
+  const [goldRate, setGoldRate] = useState({ '18': '', '22': '', '24': '' });
   const [loading, setLoading] = useState(false);
   const [uploadError, setUploadError] = useState(null);
   const [isCustomizable, setIsCustomizable] = useState(false);
   const [gstRate, setGstRate] = useState(3);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Categories
   const categories = [
@@ -134,12 +139,51 @@ const AdminPanel = () => {
     setFilteredUsers(results);
   }, [userSearchTerm, users]);
 
-  const handleImageChange = (e) => {
+  const uploadImageToCloudinary = async (file) => {
+    if (!file) return null;
+    
+    try {
+      setUploadingImage(true);
+      setUploadError(null);
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+      formData.append("folder", CLOUD_FOLDER);
+      
+      // Use item name as public_id if available, otherwise generate a unique name
+      const publicId = itemName.trim() || `product_${Date.now()}`;
+      formData.append("public_id", publicId);
+
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to upload image");
+      }
+
+      const data = await res.json();
+      return data.secure_url;
+    } catch (err) {
+      console.error("Cloudinary upload error:", err);
+      setUploadError(err.message || "Error uploading image to Cloudinary");
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleImageChange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 1 * 1024 * 1024) {
-      setUploadError('File size should be less than 1MB');
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      setUploadError('File size should be less than 2MB');
       return;
     }
 
@@ -148,15 +192,18 @@ const AdminPanel = () => {
       return;
     }
 
+    // Show preview
     const reader = new FileReader();
     reader.onload = (event) => {
-      setImageUrl(event.target.result);
-      setUploadError(null);
-    };
-    reader.onerror = () => {
-      setUploadError('Error reading file');
+      setImageUrl(event.target.result); // This is just for preview
     };
     reader.readAsDataURL(file);
+
+    // Upload to Cloudinary
+    const cloudinaryUrl = await uploadImageToCloudinary(file);
+    if (cloudinaryUrl) {
+      setImageUrl(cloudinaryUrl); // This is the actual Cloudinary URL
+    }
   };
 
   const calculatePrice = (product) => {
@@ -323,7 +370,7 @@ const AdminPanel = () => {
                   placeholder="22K rate"
                 />
               </div>
-               <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4">
                 <label className="text-yellow-800 w-16">24K:</label>
                 <input
                   type="number"
@@ -363,11 +410,11 @@ const AdminPanel = () => {
                 Save Gold Rates
               </button>
               <Link 
-              to="/image-upload" 
-              className="hover:text-yellow-300 transition font-medium text-lg px-3 py-2 rounded hover:bg-gray-800"
-            >
-              Image Upload
-            </Link>
+                to="/image-upload" 
+                className="hover:text-yellow-300 transition font-medium text-lg px-3 py-2 rounded hover:bg-gray-800"
+              >
+                Image Upload
+              </Link>
             </div>
           </div>
         </div>
@@ -571,15 +618,15 @@ const AdminPanel = () => {
                   )}
                   
                   <div className="space-y-3">
-                    <label className="cursor-pointer bg-blue-50 text-blue-600 px-4 py-2 rounded flex items-center justify-center w-full">
+                    <label className={`cursor-pointer ${uploadingImage ? 'bg-gray-200' : 'bg-blue-50 hover:bg-blue-100'} text-blue-600 px-4 py-2 rounded flex items-center justify-center w-full transition`}>
                       <FiUpload className="mr-2" />
-                      Upload Image
+                      {uploadingImage ? 'Uploading...' : 'Upload Image'}
                       <input
                         type="file"
                         onChange={handleImageChange}
                         accept="image/*"
                         className="hidden"
-                        disabled={loading}
+                        disabled={uploadingImage || loading}
                       />
                     </label>
                     
@@ -594,7 +641,7 @@ const AdminPanel = () => {
                         type="url"
                         value={imageUrl}
                         onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="Paste image URL or base64"
+                        placeholder="Paste image URL"
                         className="flex-grow border border-gray-300 rounded px-3 py-2"
                         disabled={loading}
                       />
@@ -609,8 +656,8 @@ const AdminPanel = () => {
                 <div className="pt-4">
                   <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded flex items-center justify-center"
+                    disabled={loading || uploadingImage}
+                    className={`w-full ${loading || uploadingImage ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'} text-white py-2 px-4 rounded flex items-center justify-center`}
                   >
                     {loading ? (
                       'Processing...'
